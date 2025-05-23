@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { PiKeyReturnBold} from 'react-icons/pi';
+import { PiKeyReturnBold } from 'react-icons/pi';
 import { FaSquareCheck } from 'react-icons/fa6';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleReturnBookPopup } from '../store/slices/popUpSlice';
-import {toast} from "react-toastify"
-import { fetchAllBooks, resetBookSlice} from '../store/slices/bookSlice';
+import { toast } from 'react-toastify';
+import { fetchAllBooks, resetBookSlice } from '../store/slices/bookSlice';
 import { fetchAllBorrowedBooks, resetBorrowSlice } from '../store/slices/borrowSlice';
 import ReturnBookPopup from "../popups/ReturnBookPopup";
 import Header from '../layout/Header';
@@ -17,6 +17,8 @@ const Catalog = () => {
   );
 
   const [filter, setFilter] = useState('borrowed');
+  const [email, setEmail] = useState("");
+  const [borrowedBookId, setBorrowedBookId] = useState("");
 
   const formatDateAndTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -31,7 +33,6 @@ const Catalog = () => {
 
   const formatDate = (timestamp) => {
     const date = new Date(timestamp);
-    
     return `${String(date.getDate()).padStart(2, '0')}-${String(
       date.getMonth() + 1
     ).padStart(2, '0')}-${date.getFullYear()}`;
@@ -41,42 +42,34 @@ const Catalog = () => {
 
   const borrowedBooks = allBorrowedBooks?.filter((book) => {
     const dueDate = new Date(book.dueDate);
-    return dueDate > currentDate;
+    return dueDate >= currentDate && !book.book?.returnDate;
   });
 
   const overdueBooks = allBorrowedBooks?.filter((book) => {
     const dueDate = new Date(book.dueDate);
-    return dueDate < currentDate;
+    return dueDate < currentDate && !book.book?.returnDate;
   });
 
   const booksToDisplay = filter === 'borrowed' ? borrowedBooks : overdueBooks;
 
-  const [email, setEmail] = useState("");
-  const [borrowedBookId, setBorrowedBookId] = useState("");
-
-  const openReturnBookPopup = (bookId, email) =>{
+  const openReturnBookPopup = (bookId, email) => {
     setBorrowedBookId(bookId);
     setEmail(email);
     dispatch(toggleReturnBookPopup());
-  }
+  };
 
-  useEffect(()=>{
-    if(message){
+  useEffect(() => {
+    if (message) {
       toast.success(message);
       dispatch(fetchAllBooks());
       dispatch(fetchAllBorrowedBooks());
       dispatch(resetBorrowSlice());
-      dispatch(resetBorrowSlice());
     }
-    if(error){
+    if (error) {
       toast.error(error);
       dispatch(resetBorrowSlice());
-
     }
-
-  },[dispatch, error, loading])
-
-
+  }, [dispatch, error, message]);
 
   return (
     <>
@@ -141,16 +134,20 @@ const Catalog = () => {
                     <td className="px-4 py-2">{book?.user.email}</td>
                     <td className="px-4 py-2">{book.price}</td>
                     <td className="px-4 py-2">{formatDate(book.dueDate)}</td>
-
                     <td className="px-4 py-2">
                       {formatDateAndTime(book.createdAt)}
                     </td>
-
                     <td className="px-4 py-2">
-                      {
-                        book.returnDate ? (<FaSquareCheck className="w-6 h-6"/>) : (<PiKeyReturnBold onClick={() => openReturnBookPopup(book.book, book.user.email)} className="w-6 h-6 "/>)
-                      }
-                      
+                      {book.book?.returnDate ? (
+                        <FaSquareCheck className="w-6 h-6 text-green-600" />
+                      ) : (
+                        <PiKeyReturnBold
+                          onClick={() =>
+                            openReturnBookPopup(book.book, book.user.email)
+                          }
+                          className="w-6 h-6 cursor-pointer text-blue-600"
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -158,16 +155,16 @@ const Catalog = () => {
             </table>
           </div>
         ) : (
-          
-              <h3 className="text-3xl mt-5 font-medium">
-                No {filter === "borrowed" ? "borrowed" : "overdue"} books found!
-              </h3>
-           
+          <h3 className="text-3xl mt-5 font-medium">
+            No {filter === "borrowed" ? "borrowed" : "overdue"} books found!
+          </h3>
         )}
       </main>
 
-      {/* Read Book Popup */}
-      {returnBookPopup && <ReturnBookPopup/>}
+      {/* Return Book Popup */}
+      {returnBookPopup && (
+        <ReturnBookPopup bookId={borrowedBookId} email={email} />
+      )}
     </>
   );
 };
